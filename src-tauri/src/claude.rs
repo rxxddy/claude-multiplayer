@@ -29,6 +29,8 @@ pub struct PathDiagnostics {
     pub claude_md_exists: bool,
     pub focus_file_path: String,
     pub focus_file_exists: bool,
+    pub claude_cli_path: String,
+    pub claude_cli_found: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -90,6 +92,7 @@ pub fn diagnostics(cfg: &LocalSettings) -> PathDiagnostics {
     let dir = claude_dir(cfg);
     let md = claude_md(cfg);
     let focus = focus_file(cfg);
+    let cli = claude_cli(cfg);
     PathDiagnostics {
         claude_dir_exists: dir.is_dir(),
         claude_dir_path: dir.to_string_lossy().into_owned(),
@@ -97,6 +100,10 @@ pub fn diagnostics(cfg: &LocalSettings) -> PathDiagnostics {
         claude_md_path: md.to_string_lossy().into_owned(),
         focus_file_exists: focus.is_file(),
         focus_file_path: focus.to_string_lossy().into_owned(),
+        claude_cli_found: cli.is_some(),
+        claude_cli_path: cli
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default(),
     }
 }
 
@@ -318,12 +325,46 @@ pub fn focus(
     (project, topic)
 }
 
+/// Finds the Claude Code CLI: the path set in Settings first, then the usual install locations (apps started
+/// by Explorer, autostart or the updater can inherit a PATH without the user's install folder), then PATH.
+pub fn claude_cli(cfg: &LocalSettings) -> Option<PathBuf> {
+    if let Some(custom) = non_empty(cfg.custom_claude_cli.as_ref()).filter(|p| p.is_file()) {
+        return Some(custom);
+    }
+    let home = dirs::home_dir()?;
+    let mut candidates = vec![home.join(".local").join("bin").join("claude.exe")];
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        candidates.push(PathBuf::from(appdata).join("npm").join("claude.cmd"));
+    }
+    if let Some(found) = candidates.into_iter().find(|p| p.is_file()) {
+        return Some(found);
+    }
+    let out = silent_command("where").arg("claude").output().ok()?;
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(|l| PathBuf::from(l.trim()))
+        .find(|p| p.is_file())
+}
+
 /// Parses `claude -p "/usage"`, e.g. "Current session: 11% used · resets 3pm (Europe/Rome)".
-pub fn fetch_usage() -> Option<UsageInfo> {
-    let out = silent_command("cmd")
-        .args(["/C", "claude", "-p", "/usage"])
-        .output()
-        .ok()?;
+pub fn fetch_usage(cfg: &LocalSettings) -> Option<UsageInfo> {
+    let cli = claude_cli(cfg)?;
+    let out = if cli
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("cmd"))
+    {
+        silent_command("cmd")
+            .arg("/C")
+            .arg(&cli)
+            .args(["-p", "/usage"])
+            .output()
+            .ok()?
+    } else {
+        silent_command(&cli.to_string_lossy())
+            .args(["-p", "/usage"])
+            .output()
+            .ok()?
+    };
     let text = String::from_utf8_lossy(&out.stdout);
     let parse = |prefix: &str| -> Option<(i32, String)> {
         let line = text.lines().find(|l| l.trim_start().starts_with(prefix))?;
@@ -353,6 +394,7 @@ pub fn set_custom_paths(
     claude_dir: Option<String>,
     focus_file: Option<String>,
     claude_md: Option<String>,
+    claude_cli: Option<String>,
 ) -> Result<PathDiagnostics, String> {
     let to_setting = |v: String| Some(v.trim().to_string()).filter(|s| !s.is_empty());
     let mut cfg = lock(&state.settings);
@@ -368,6 +410,14 @@ pub fn set_custom_paths(
     }
     if let Some(md) = claude_md {
         cfg.custom_claude_md = to_setting(md);
+    }
+    if let Some(cli) = claude_cli {
+        let cli = to_setting(cli.trim_matches('"').to_string());
+        if let Some(c) = cli.as_deref().filter(|c| !Path::new(c).is_file()) {
+            return Err(format!("File does not exist: {c}"));
+        }
+        cfg.custom_claude_cli = cli;
+        crate::telemetry::force_refresh();
     }
     settings::save(&cfg);
     ensure_focus_and_claude_md(&cfg)

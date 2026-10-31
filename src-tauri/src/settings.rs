@@ -58,6 +58,8 @@ pub struct LocalSettings {
     pub custom_claude_dir: Option<String>,
     pub custom_focus_file: Option<String>,
     pub custom_claude_md: Option<String>,
+    /// Path to claude.exe chosen by the user when it is not in a standard location.
+    pub custom_claude_cli: Option<String>,
     pub autostart_enabled: bool,
     pub tray_enabled: bool,
     pub claude_md_consent: Option<bool>,
@@ -75,6 +77,7 @@ impl Default for LocalSettings {
             custom_claude_dir: None,
             custom_focus_file: None,
             custom_claude_md: None,
+            custom_claude_cli: None,
             autostart_enabled: true,
             tray_enabled: false,
             claude_md_consent: None,

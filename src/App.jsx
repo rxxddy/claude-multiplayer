@@ -9,7 +9,7 @@ import { useT, initLanguage, t as translate } from './i18n';
 import { LanguageDropdown } from './components/Controls';
 import Spark from './components/Spark';
 import ServerView from './components/ServerView';
-import { ConsentModal } from './components/Modals';
+import { ConsentModal, ClaudeCliModal } from './components/Modals';
 import Toasts, { notify, confirmBox } from './components/Toasts';
 import './styles/index.css';
 
@@ -346,6 +346,12 @@ export default function App() {
       </footer>
 
       {boot?.needs_claude_md_consent && <ConsentModal onAnswer={answerConsent} />}
+      {!boot?.needs_claude_md_consent && boot?.diagnostics?.claude_cli_found === false && (
+        <ClaudeCliModal
+          onSaved={(d) => setSnap((s) => ({ ...s, path_diagnostics: d }))}
+          onClose={() => setBoot((b) => ({ ...b, diagnostics: { ...b.diagnostics, claude_cli_found: true } }))}
+        />
+      )}
       <Toasts />
     </div>
   );

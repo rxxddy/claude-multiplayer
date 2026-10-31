@@ -347,7 +347,7 @@ dependencies = [
 
 [[package]]
 name = "claude-multiplayer"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "chrono",
  "dirs 5.0.1",

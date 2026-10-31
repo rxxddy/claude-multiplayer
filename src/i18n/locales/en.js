@@ -426,4 +426,10 @@ export default {
   'sys.showdownReminderEmpty': '⏳ Weekly showdown on Friday 16:30 (in {hours}h): no commits yet this week. The crown is up for grabs!',
   'card.bar5h': '5H',
   'card.barWeek': 'WK',
+  'paths.claudeCli': 'Claude Code CLI (claude.exe)',
+  'cli.title': 'Where is claude.exe?',
+  'cli.body': 'Claude Multiplayer could not find the Claude Code CLI, so it cannot read your 5-hour and weekly limits.',
+  'cli.hint': 'Paste the full path to claude.exe. To find it, run "where claude" in a terminal. You can change it later in paths.',
+  'cli.later': 'later',
+  'cli.saved': 'Claude Code CLI saved. Reading your limits…',
 };

@@ -198,6 +198,7 @@ export function PathsModal({ diag, projectsRoot, onClose, onDiag, onProjectsRoot
   const [claudeDir, setClaudeDir] = useState(diag?.claude_dir_path || '');
   const [focusFile, setFocusFile] = useState(diag?.focus_file_path || '');
   const [claudeMd, setClaudeMd] = useState(diag?.claude_md_path || '');
+  const [claudeCli, setClaudeCli] = useState(diag?.claude_cli_path || '');
 
   // show what is being counted right now
   useEffect(() => {
@@ -226,7 +227,7 @@ export function PathsModal({ diag, projectsRoot, onClose, onDiag, onProjectsRoot
   };
   const save = async () => {
     try {
-      onDiag(await invoke('set_custom_paths', { claudeDir: claudeDir || null, focusFile: focusFile || null, claudeMd: claudeMd || null }));
+      onDiag(await invoke('set_custom_paths', { claudeDir: claudeDir || null, focusFile: focusFile || null, claudeMd: claudeMd || null, claudeCli }));
       notify(t('paths.saved'), 'ok');
     } catch (err) {
       notify(String(err), 'error');
@@ -278,6 +279,10 @@ export function PathsModal({ diag, projectsRoot, onClose, onDiag, onProjectsRoot
           {t('paths.focusFile')} {diag?.focus_file_exists === false && <span className="arcade-loss">{t('paths.notFound')}</span>}
         </label>
         <input className="deck-input" value={focusFile} onChange={(e) => setFocusFile(e.target.value)} />
+        <label>
+          {t('paths.claudeCli')} {diag?.claude_cli_found === false && <span className="arcade-loss">{t('paths.notFound')}</span>}
+        </label>
+        <input className="deck-input" value={claudeCli} placeholder="C:\\Users\\you\\.local\\bin\\claude.exe" onChange={(e) => setClaudeCli(e.target.value)} />
         <label>{t('paths.claudeMd')}</label>
         <input className="deck-input" value={claudeMd} onChange={(e) => setClaudeMd(e.target.value)} />
         <div className="modal-actions">
@@ -429,6 +434,44 @@ export function ConsentModal({ onAnswer }) {
           </button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+/** Asked at start-up when claude.exe cannot be found: without it the app cannot read Claude usage limits. */
+export function ClaudeCliModal({ onSaved, onClose }) {
+  const t = useT();
+  const [path, setPath] = useState('');
+  const [busy, setBusy] = useState(false);
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const diag = await invoke('set_custom_paths', { claudeCli: path.trim() });
+      onSaved(diag);
+      notify(t('cli.saved'), 'ok');
+      onClose();
+    } catch (err) {
+      notify(String(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={t('cli.title')} onClose={onClose}>
+      <form className="form-stack" onSubmit={save}>
+        <p>{t('cli.body')}</p>
+        <p className="arcade-dim">{t('cli.hint')}</p>
+        <input className="deck-input" autoFocus value={path} placeholder="C:\\Users\\you\\.local\\bin\\claude.exe" onChange={(e) => setPath(e.target.value)} />
+        <div className="modal-actions">
+          <button type="button" className="deck-btn" onClick={onClose}>
+            {t('cli.later')}
+          </button>
+          <button type="submit" className="deck-btn deck-btn--primary" disabled={busy || !path.trim()}>
+            {t('common.save')}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

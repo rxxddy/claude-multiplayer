@@ -118,7 +118,8 @@ pub fn run_worker(app: AppHandle) {
         *lock(&state.snapshot) = Some(snap);
 
         if tick.is_multiple_of(USAGE_TICKS) || forced {
-            if let Some(fresh) = claude::fetch_usage() {
+            let cfg = lock(&state.settings).clone();
+            if let Some(fresh) = claude::fetch_usage(&cfg) {
                 *lock(&state.usage) = fresh.clone();
                 tray::refresh(&app, &fresh);
             }

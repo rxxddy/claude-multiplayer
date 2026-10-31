@@ -427,4 +427,10 @@ export default {
   'sys.showdownReminderEmpty': '⏳ Sfida settimanale venerdì alle 16:30 (tra {hours}h): ancora nessun commit questa settimana. La corona è in palio!',
   'card.bar5h': '5H',
   'card.barWeek': 'SET',
+  'paths.claudeCli': 'CLI di Claude Code (claude.exe)',
+  'cli.title': 'Dov’è claude.exe?',
+  'cli.body': 'Claude Multiplayer non ha trovato la CLI di Claude Code, quindi non può leggere i tuoi limiti di 5 ore e settimanali.',
+  'cli.hint': 'Incolla il percorso completo di claude.exe. Per trovarlo, esegui "where claude" in un terminale. Puoi cambiarlo più tardi in percorsi.',
+  'cli.later': 'più tardi',
+  'cli.saved': 'CLI di Claude Code salvata. Lettura dei limiti…',
 };
