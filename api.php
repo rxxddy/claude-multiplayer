@@ -208,6 +208,7 @@ final class Storage
         self::migrateV6($pdo);
         self::migrateV7($pdo);
         self::migrateV8($pdo);
+        self::migrateV9($pdo);
         self::applySiteConfig($pdo);
         self::$pdo = $pdo;
 
@@ -254,6 +255,19 @@ final class Storage
             }
         }
         $pdo->exec('PRAGMA user_version = 8;');
+    }
+
+    /** v9: translation key + params for system messages (clients render them in their own language). */
+    private static function migrateV9(PDO $pdo): void
+    {
+        if ((int)$pdo->query('PRAGMA user_version;')->fetchColumn() >= 9) {
+            return;
+        }
+        try {
+            $pdo->exec("ALTER TABLE messages ADD COLUMN i18n TEXT NOT NULL DEFAULT ''");
+        } catch (PDOException) {
+        }
+        $pdo->exec('PRAGMA user_version = 9;');
     }
 
     private static function migrateV7(PDO $pdo): void
@@ -1266,6 +1280,7 @@ final class DeckKernel
             'bs_fire'         => $this->bsFire($user, $in),
             'bs_resign'       => $this->bsResign($user, $in),
             'admin'           => $this->admin($user, $member, $in),
+            'transfer_points' => $this->transferPoints($user, $member, $in),
             'admin_banned'    => $this->adminBanned($member),
             default           => throw new ApiException('Unknown action.', 400, 'UNKNOWN_ACTION'),
         };
@@ -1523,7 +1538,7 @@ final class DeckKernel
                 $weekKey,
                 $top[0]['display_nick'],
                 (int)$top[0]['n']
-            ));
+            ), ['showdown', ['week' => $weekKey, 'nick' => $top[0]['display_nick'], 'n' => (int)$top[0]['n']]]);
         });
     }
 
@@ -1627,6 +1642,7 @@ final class DeckKernel
             'content'      => (string)$m['content'],
             'snippet_body' => (string)$m['snippet_body'],
             'reply_to'     => (int)$m['reply_to'],
+            'i18n'         => ($m['i18n'] ?? '') !== '' ? json_decode((string)$m['i18n'], true) : null,
             'created_ts'   => (int)$m['created_ts'],
         ];
     }
@@ -1745,13 +1761,13 @@ final class DeckKernel
         }
         $apiKey = Crypto::decrypt($this->meta('anthropic_key_enc')) ?: Config::anthropicKey();
         if ($apiKey === '') {
-            $this->insertSystemMessage('CLAUDE', 'SYSTEM', '⚠️ Anthropic API key is not configured for this server. An admin can set it in Server Settings.');
+            $this->insertSystemMessage('CLAUDE', 'SYSTEM', '⚠️ Anthropic API key is not configured for this server. An admin can set it in Server Settings.', ['claudeNoKey']);
             return;
         }
         try {
             Security::enforceRateLimit($this->pdo, 'claude_bot', 5, 3600, 'u:' . $userId);
         } catch (ApiException) {
-            $this->insertSystemMessage('CLAUDE', 'SYSTEM', "@{$askerNick} you reached the @claude limit (5 questions per hour).");
+            $this->insertSystemMessage('CLAUDE', 'SYSTEM', "@{$askerNick} you reached the @claude limit (5 questions per hour).", ['claudeLimit', ['nick' => $askerNick]]);
             return;
         }
         $room = $this->pdo->query("SELECT tokens_burned_today, burn_date FROM rooms WHERE room_id = 'MAIN'")->fetch();
@@ -1761,7 +1777,7 @@ final class DeckKernel
             $burned = 0;
         }
         if ($burned >= $this->settings()['claude_daily_tokens']) {
-            $this->insertSystemMessage('CLAUDE', 'SYSTEM', 'The daily @claude token budget for this server is used up. Try again tomorrow.');
+            $this->insertSystemMessage('CLAUDE', 'SYSTEM', 'The daily @claude token budget for this server is used up. Try again tomorrow.', ['claudeBudget']);
             return;
         }
 
@@ -1793,7 +1809,7 @@ final class DeckKernel
         if ($code !== 200 || !is_string($replyText)) {
             // Upstream errors may contain account details: log them, never post them
             error_log('[multiplayer] @claude upstream failure, HTTP ' . $code);
-            $this->insertSystemMessage('CLAUDE', 'SYSTEM', '⚠️ Claude is unavailable right now. Please try again later.');
+            $this->insertSystemMessage('CLAUDE', 'SYSTEM', '⚠️ Claude is unavailable right now. Please try again later.', ['claudeDown']);
             return;
         }
         $used = (int)($decoded['usage']['input_tokens'] ?? 0) + (int)($decoded['usage']['output_tokens'] ?? 0);
@@ -1859,7 +1875,7 @@ final class DeckKernel
                 (int)$opponent['elo'],
                 $user['display_nick'],
                 $user['display_nick']
-            ));
+            ), [$stake > 0 ? 'chessChallengeStake' : 'chessChallenge', ['from' => $user['display_nick'], 'fromElo' => (int)$user['elo'], 'to' => $opponent['display_nick'], 'toElo' => (int)$opponent['elo'], 'stake' => $stake]]);
             return $id;
         });
 
@@ -1914,7 +1930,7 @@ final class DeckKernel
             foreach ($others->fetchAll() as $o) {
                 $this->pdo->prepare("UPDATE chess_games SET status = 'TAKEN', updated_at = ? WHERE id = ? AND status = 'INVITED'")->execute([time(), (int)$o['id']]);
                 $this->addPoints($whiteId, (int)$o['stake']);
-                $this->insertSystemMessage('ARENA', 'CHESS_EVENT', sprintf("♟️ %s's challenge to %s was withdrawn — %s accepted first.", $game['display_nick'], $o['display_nick'], $user['display_nick']));
+                $this->insertSystemMessage('ARENA', 'CHESS_EVENT', sprintf("♟️ %s's challenge to %s was withdrawn — %s accepted first.", $game['display_nick'], $o['display_nick'], $user['display_nick']), ['chessTaken', ['from' => $game['display_nick'], 'to' => $o['display_nick'], 'by' => $user['display_nick']]]);
             }
             $this->insertSystemMessage('ARENA', 'CHESS_EVENT', sprintf(
                 '♟️ Rated Match Started: %s (White, %d ELO) vs %s (Black, %d ELO)!',
@@ -1922,7 +1938,7 @@ final class DeckKernel
                 (int)$game['elo'],
                 $user['display_nick'],
                 (int)$user['elo']
-            ));
+            ), ['chessStarted', ['white' => $game['display_nick'], 'whiteElo' => (int)$game['elo'], 'black' => $user['display_nick'], 'blackElo' => (int)$user['elo']]]);
             return ['ok' => true, 'game_id' => (int)$game['id']];
         });
     }
@@ -2023,16 +2039,24 @@ final class DeckKernel
             $prize = 2 * $stake + 25 + 2 * max(0, $winnerId === $wId ? $diffW : $diffB);
             $this->addPoints($winnerId, $prize);
             $ptsNote = " | +{$prize} pts";
+            $ptsKey = ['pts' => $prize, 'each' => false];
         } else {
             $this->addPoints($wId, $stake + 10);
             $this->addPoints($bId, $stake + 10);
             $ptsNote = ' | +' . ($stake + 10) . ' pts each';
+            $ptsKey = ['pts' => $stake + 10, 'each' => true];
         }
         $fmtW = ($diffW >= 0 ? '+' : '') . $diffW;
         $fmtB = ($diffB >= 0 ? '+' : '') . $diffB;
 
         if ($winnerId > 0) {
             $loserId = $winnerId === $wId ? $bId : $wId;
+            $i18n = ['chessWin', $ptsKey + [
+                'reason' => $reason,
+                'winner' => $players[$winnerId]['display_nick'], 'loser' => $players[$loserId]['display_nick'],
+                'winnerElo' => $winnerId === $wId ? $newWhiteElo : $newBlackElo, 'winnerDiff' => $winnerId === $wId ? $fmtW : $fmtB,
+                'loserElo' => $loserId === $wId ? $newWhiteElo : $newBlackElo, 'loserDiff' => $loserId === $wId ? $fmtW : $fmtB,
+            ]];
             $banner = sprintf(
                 '♟️ %s // %s defeated %s! Rating update: %s -> %d ELO (%s) | %s -> %d ELO (%s)',
                 strtoupper($reason),
@@ -2046,6 +2070,11 @@ final class DeckKernel
                 $loserId === $wId ? $fmtW : $fmtB
             );
         } else {
+            $i18n = ['chessDraw', $ptsKey + [
+                'reason' => $reason,
+                'white' => $players[$wId]['display_nick'], 'whiteElo' => $newWhiteElo, 'whiteDiff' => $fmtW,
+                'black' => $players[$bId]['display_nick'], 'blackElo' => $newBlackElo, 'blackDiff' => $fmtB,
+            ]];
             $banner = sprintf(
                 '♟️ DRAW (%s) // %s [%d ELO (%s)] and %s [%d ELO (%s)]',
                 $reason,
@@ -2057,7 +2086,7 @@ final class DeckKernel
                 $fmtB
             );
         }
-        $this->insertSystemMessage('ARENA', 'CHESS_EVENT', $banner . $ptsNote);
+        $this->insertSystemMessage('ARENA', 'CHESS_EVENT', $banner . $ptsNote, $i18n);
     }
 
     private function chessDecline(array $user, array $in): array
@@ -2080,7 +2109,7 @@ final class DeckKernel
             if (!$game || !$this->cancelChessInvite($game)) {
                 throw new ApiException('No pending chess challenge with that operator.');
             }
-            $this->insertSystemMessage('ARENA', 'CHESS_EVENT', "♟️ Challenge between {$game['white_nick']} and {$game['black_nick']} was withdrawn. Stake refunded.");
+            $this->insertSystemMessage('ARENA', 'CHESS_EVENT', "♟️ Challenge between {$game['white_nick']} and {$game['black_nick']} was withdrawn. Stake refunded.", ['chessWithdrawn', ['white' => $game['white_nick'], 'black' => $game['black_nick']]]);
         });
 
         return ['ok' => true];
@@ -2176,7 +2205,7 @@ final class DeckKernel
                 }
                 $this->setMeta('anthropic_key_enc', $ak === '' ? '' : Crypto::encrypt($ak));
             }
-            $this->insertSystemMessage('ADMIN', 'SYSTEM', "{$user['display_nick']} updated server settings.");
+            $this->insertSystemMessage('ADMIN', 'SYSTEM', "{$user['display_nick']} updated server settings.", ['settingsUpdated', ['nick' => $user['display_nick']]]);
             return ['ok' => true, 'settings' => $cur];
         }
 
@@ -2184,7 +2213,8 @@ final class DeckKernel
         $t = $this->pdo->prepare("SELECT rm.role, u.display_nick FROM room_members rm JOIN users u ON u.id = rm.user_id WHERE rm.room_id = 'MAIN' AND rm.user_id = ?");
         $t->execute([$targetId]);
         $target = $t->fetch();
-        if (!$target || $targetId === $userId) {
+        $selfGrant = $op === 'grant_points' && $isOwner;
+        if (!$target || ($targetId === $userId && !$selfGrant)) {
             throw new ApiException('Invalid target.');
         }
         // Admins may only act on members; the owner may act on anyone
@@ -2205,6 +2235,7 @@ final class DeckKernel
                 $ownerOnly();
                 $upd("UPDATE room_members SET role = ? WHERE room_id = 'MAIN' AND user_id = ?", [$op === 'promote' ? 'admin' : 'member', $targetId]);
                 $msg = $op === 'promote' ? "{$nick} is now an admin." : "{$nick} is no longer an admin.";
+                $i18n = [$op === 'promote' ? 'adminPromoted' : 'adminDemoted', ['nick' => $nick]];
                 break;
             case 'transfer':
                 $ownerOnly();
@@ -2213,43 +2244,81 @@ final class DeckKernel
                 $upd("UPDATE rooms SET owner_id = ? WHERE room_id = 'MAIN'", [$targetId]);
                 $this->setMeta('owner_user_id', (string)$targetId);
                 $msg = "{$nick} is the new server owner.";
+                $i18n = ['adminOwner', ['nick' => $nick]];
                 break;
             case 'mute':
                 $mins = max(1, min(10080, (int)($in['minutes'] ?? 10)));
                 $upd("UPDATE room_members SET muted_until = ? WHERE room_id = 'MAIN' AND user_id = ?", [time() + $mins * 60, $targetId]);
                 $msg = "{$nick} was muted for {$mins} min.";
+                $i18n = ['adminMuted', ['nick' => $nick, 'min' => $mins]];
                 break;
             case 'unmute':
                 $upd("UPDATE room_members SET muted_until = 0 WHERE room_id = 'MAIN' AND user_id = ?", [$targetId]);
                 $msg = "{$nick} was unmuted.";
+                $i18n = ['adminUnmuted', ['nick' => $nick]];
                 break;
             case 'kick':
                 $upd("DELETE FROM room_members WHERE room_id = 'MAIN' AND user_id = ?", [$targetId]);
                 $upd('UPDATE users SET token_sha256 = NULL WHERE id = ?', [$targetId]);
                 $msg = "{$nick} was kicked.";
+                $i18n = ['adminKicked', ['nick' => $nick]];
                 break;
             case 'ban':
                 $upd("UPDATE room_members SET banned = 1, role = 'member' WHERE room_id = 'MAIN' AND user_id = ?", [$targetId]);
                 $upd('UPDATE users SET token_sha256 = NULL WHERE id = ?', [$targetId]);
                 $msg = "{$nick} was banned.";
+                $i18n = ['adminBanned', ['nick' => $nick]];
                 break;
             case 'unban':
                 $upd("UPDATE room_members SET banned = 0 WHERE room_id = 'MAIN' AND user_id = ?", [$targetId]);
                 $msg = "{$nick} was unbanned.";
+                $i18n = ['adminUnbanned', ['nick' => $nick]];
                 break;
             case 'grant_points':
                 $ownerOnly();
                 $amount = max(-1000000, min(1000000, (int)($in['amount'] ?? 0)));
                 $this->addPoints($targetId, $amount);
-                $msg = sprintf('%s %s %d pts.', $nick, $amount >= 0 ? 'received' : 'lost', abs($amount));
-                break;
+                return ['ok' => true, 'points' => $this->userPoints($targetId)];
             default:
                 throw new ApiException('Unknown admin operation.');
         }
 
         $this->bumpRev();
-        $this->insertSystemMessage('ADMIN', 'SYSTEM', "[{$user['display_nick']}] {$msg}");
+        $this->insertSystemMessage('ADMIN', 'SYSTEM', "[{$user['display_nick']}] {$msg}", [$i18n[0], $i18n[1] + ['by' => $user['display_nick']]]);
         return ['ok' => true];
+    }
+
+    /** Member-to-member gift: atomic, never overdraws, announced in chat. */
+    private function transferPoints(array $user, array $member, array $in): array
+    {
+        $userId = (int)$user['id'];
+        Security::enforceRateLimit($this->pdo, 'transfer', 10, 60, 'u:' . $userId);
+        if ((int)$member['muted_until'] > time()) {
+            throw new ApiException('You are muted.', 403, 'MUTED');
+        }
+        $targetId = (int)($in['target_user_id'] ?? 0);
+        $amount = (int)($in['amount'] ?? 0);
+        if ($amount < 1 || $amount > 1000000) {
+            throw new ApiException('Amount must be between 1 and 1000000 points.');
+        }
+        if ($targetId === $userId) {
+            throw new ApiException('You cannot send points to yourself.');
+        }
+        $t = $this->pdo->prepare("SELECT u.display_nick FROM room_members rm JOIN users u ON u.id = rm.user_id
+            WHERE rm.room_id = 'MAIN' AND rm.user_id = ? AND rm.banned = 0");
+        $t->execute([$targetId]);
+        $nick = $t->fetchColumn();
+        if ($nick === false) {
+            throw new ApiException('Invalid target.');
+        }
+
+        $this->tx(function () use ($userId, $targetId, $amount): void {
+            $this->debit($userId, $amount);
+            $this->addPoints($targetId, $amount);
+        });
+        $this->insertSystemMessage('POINTS', 'SYSTEM', sprintf('%s sent %d pts to %s.', $user['display_nick'], $amount, $nick), ['pointsSent', ['from' => $user['display_nick'], 'n' => $amount, 'to' => $nick]]);
+
+        return ['ok' => true, 'points' => $this->userPoints($userId)];
     }
 
     private function adminBanned(array $member): array
@@ -2393,7 +2462,8 @@ final class DeckKernel
 
             if ($mult >= 10 || $mult <= -2) {
                 $verb = $mult > 0 ? 'HIT' : 'BUSTED';
-                $this->insertSystemMessage('CASINO', 'SYSTEM', sprintf('[%s] %s %s %s on %d pts (%+d)', strtoupper($kind), $user['display_nick'], $verb, $label, $bet, $delta));
+                $this->insertSystemMessage('CASINO', 'SYSTEM', sprintf('[%s] %s %s %s on %d pts (%+d)', strtoupper($kind), $user['display_nick'], $verb, $label, $bet, $delta),
+                    [$mult > 0 ? 'casinoHit' : 'casinoBust', ['game' => strtoupper($kind), 'nick' => $user['display_nick'], 'result' => $label, 'bet' => $bet, 'delta' => sprintf('%+d', $delta)]]);
             }
 
             return [
@@ -2440,7 +2510,7 @@ final class DeckKernel
                 ->execute([$userId, $stake, $max, json_encode($players), time()]);
             $id = (int)$this->pdo->lastInsertId();
             $this->logGame($userId, 'duel');
-            $this->insertSystemMessage('CASINO', 'SYSTEM', sprintf('[DICE] %s opened a %d-player duel for %d pts. Join from the ARCADE tab!', $user['display_nick'], $max, $stake));
+            $this->insertSystemMessage('CASINO', 'SYSTEM', sprintf('[DICE] %s opened a %d-player duel for %d pts. Join from the ARCADE tab!', $user['display_nick'], $max, $stake), ['diceOpen', ['nick' => $user['display_nick'], 'n' => $max, 'stake' => $stake]]);
             return $id;
         });
 
@@ -2489,7 +2559,7 @@ final class DeckKernel
                 $status = 'DONE';
                 $result = json_encode(['winner' => $winner, 'rolls' => $rolls, 'pot' => $pot]);
                 $line = implode(' | ', array_map(fn($r) => $r['nick'] . ':' . $r['roll'], $rolls));
-                $this->insertSystemMessage('CASINO', 'SYSTEM', sprintf('[DICE] %s -> %s wins the %d pts pot!', $line, $winner['nick'], $pot));
+                $this->insertSystemMessage('CASINO', 'SYSTEM', sprintf('[DICE] %s -> %s wins the %d pts pot!', $line, $winner['nick'], $pot), ['diceWin', ['rolls' => $line, 'nick' => $winner['nick'], 'pot' => $pot]]);
             }
 
             $upd = $this->pdo->prepare("UPDATE duels SET players = ?, status = ?, result = ? WHERE id = ? AND status = 'OPEN' AND players = ?");
@@ -2664,7 +2734,7 @@ final class DeckKernel
                     // Only one fleet was placed: that player takes the pot (no bonus)
                     $winner = $g['a_ships'] !== '' ? (int)$g['a_id'] : (int)$g['b_id'];
                     $loser = $winner === (int)$g['a_id'] ? (int)$g['b_id'] : (int)$g['a_id'];
-                    $verb = 'wins by forfeit (fleet never placed) against';
+                    $verb = 'forfeit';
                     $bonus = 0;
                 } else {
                     $this->bsCancel($g);
@@ -2737,7 +2807,7 @@ final class DeckKernel
                     $this->nickOf((int)$g['b_id']),
                     (int)$g['stake'] > 0 ? " for {$g['stake']} pts each" : '',
                     $this->nickOf((int)$g['a_id'])
-                ));
+                ), [(int)$g['stake'] > 0 ? 'bsStartStake' : 'bsStart', ['a' => $this->nickOf((int)$g['a_id']), 'b' => $this->nickOf((int)$g['b_id']), 'stake' => (int)$g['stake']]]);
             }
             return $started;
         });
@@ -2802,7 +2872,7 @@ final class DeckKernel
                 throw new ApiException('Game changed, try again.', 409, 'CONFLICT');
             }
             if ($gameOver) {
-                $this->bsFinish($g, $userId, $foeId, 'sank the entire fleet of');
+                $this->bsFinish($g, $userId, $foeId, 'sank');
             }
 
             $out = ['ok' => true, 'result' => $result, 'game_over' => $gameOver];
@@ -2816,8 +2886,10 @@ final class DeckKernel
         });
     }
 
-    private function bsFinish(array $g, int $winnerId, int $loserId, string $verb, int $bonus = 25): void
+    private function bsFinish(array $g, int $winnerId, int $loserId, string $how, int $bonus = 25): void
     {
+        $verb = ['sank' => 'sank the entire fleet of', 'resign' => 'wins by resignation against',
+            'forfeit' => 'wins by forfeit (fleet never placed) against'][$how] ?? $how;
         $prize = 2 * (int)$g['stake'] + $bonus;
         $this->addPoints($winnerId, $prize);
         $this->insertSystemMessage('ARENA', 'BATTLESHIP_EVENT', sprintf(
@@ -2826,7 +2898,7 @@ final class DeckKernel
             $verb,
             $this->nickOf($loserId),
             $prize
-        ));
+        ), ['bsWin_' . $how, ['winner' => $this->nickOf($winnerId), 'loser' => $this->nickOf($loserId), 'prize' => $prize]]);
     }
 
     private function bsResign(array $user, array $in): array
@@ -2842,7 +2914,7 @@ final class DeckKernel
             $upd = $this->pdo->prepare("UPDATE bs_games SET status = 'FINISHED', winner_id = ?, updated_ts = ? WHERE id = ? AND status = 'ACTIVE'");
             $upd->execute([$foeId, time(), (int)$g['id']]);
             if ($upd->rowCount() === 1) {
-                $this->bsFinish($g, $foeId, $userId, 'wins by resignation against');
+                $this->bsFinish($g, $foeId, $userId, 'resign');
             }
         });
         return ['ok' => true];
@@ -2912,13 +2984,14 @@ final class DeckKernel
         return $out;
     }
 
-    private function insertSystemMessage(string $sender, string $type, string $content): void
+    /** $i18n = [key, params]: lets clients show the message in the reader's language; $content stays the English fallback. */
+    private function insertSystemMessage(string $sender, string $type, string $content, ?array $i18n = null): void
     {
         $this->pdo->prepare('
             INSERT INTO messages (
                 room_id, user_id, sender_nick, sender_elo, avatar_preset, avatar_color,
-                is_champion, msg_type, content, created_at, created_ts
-            ) VALUES (\'MAIN\', 0, ?, 0, ?, ?, 0, ?, ?, ?, ?)
+                is_champion, msg_type, content, created_at, created_ts, i18n
+            ) VALUES (\'MAIN\', 0, ?, 0, ?, ?, 0, ?, ?, ?, ?, ?)
         ')->execute([
             $sender,
             'CLAUDE_CRAB',
@@ -2927,6 +3000,7 @@ final class DeckKernel
             $content,
             date('H:i:s'),
             time(),
+            $i18n ? (string)json_encode(['k' => $i18n[0], 'p' => $i18n[1] ?? []]) : '',
         ]);
     }
 }

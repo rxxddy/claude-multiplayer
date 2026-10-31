@@ -128,12 +128,13 @@ function Stat({ label, value, sub }) {
 }
 
 /** Full-screen operator profile with every metric plus chess and moderation actions. */
-export function PlayerCardModal({ op, me, myRole, maxStake, onClose, onChessInvite, onAdmin }) {
+export function PlayerCardModal({ op, me, myRole, maxStake, onClose, onChessInvite, onAdmin, onSendPoints }) {
   const t = useT();
   const task = useTranslatedText(op?.task || op?.task_it || '');
   const [stake, setStake] = useState(0);
   const [muteMin, setMuteMin] = useState(10);
   const [grant, setGrant] = useState(100);
+  const [gift, setGift] = useState(100);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -241,6 +242,44 @@ export function PlayerCardModal({ op, me, myRole, maxStake, onClose, onChessInvi
                 {stake > 0 ? t('card.challengeFor', { n: stake }) : t('card.challengeFriendly')}
               </button>
               <span className="arcade-dim">{t('card.stakeHint')}</span>
+            </div>
+          </section>
+        )}
+
+        {!isMe && (
+          <section className="pcf__box">
+            <h4>{t('card.sendPoints')}</h4>
+            <div className="pc__row">
+              <NumberInput min={1} max={Number(me?.points) || 1} step={10} value={gift} onChange={(v) => setGift(Math.max(1, Number(v) || 1))} style={{ width: 140 }} />
+              <button
+                type="button"
+                className="deck-btn deck-btn--primary"
+                disabled={!(Number(me?.points) >= gift)}
+                onClick={async () => {
+                  if (!(await confirmBox(t('card.sendConfirm', { n: gift, nick: op.display_nick })))) return;
+                  await onSendPoints(op.user_id, gift);
+                }}
+              >
+                {t('card.sendBtn', { n: gift })}
+              </button>
+              <span className="arcade-dim">{t('card.sendHint')}</span>
+            </div>
+          </section>
+        )}
+
+        {isOwner && isMe && (
+          <section className="pcf__box pcf__box--admin">
+            <h4>{t('card.moderation')}</h4>
+            <div className="pc__row">
+              <NumberInput step={10} value={grant} onChange={(v) => setGrant(Number(v) || 0)} style={{ width: 120 }} />
+              <button
+                type="button"
+                className="deck-btn"
+                onClick={() => act('grant_points', { amount: grant }, t(grant >= 0 ? 'card.giveSelfConfirm' : 'card.removeSelfConfirm', { n: Math.abs(grant) }))}
+              >
+                {t('card.pointsBtn')}
+              </button>
+              <span className="arcade-dim">{t('card.grantSilent')}</span>
             </div>
           </section>
         )}

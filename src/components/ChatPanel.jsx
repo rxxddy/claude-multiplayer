@@ -2,7 +2,7 @@ import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { invoke } from '@tauri-apps/api/core';
 import { OperatorSvgIcon } from './Avatar';
 import { notify, confirmBox } from './Toasts';
-import { useT, t as tr } from '../i18n';
+import { useT, t as tr, systemText } from '../i18n';
 
 export const SLASH_HELP = [
   // second item is an i18n key
@@ -37,12 +37,13 @@ function Content({ text, myNick }) {
 }
 
 const Message = memo(function Message({ m, quoted, myId, myNick, onReply, onOpenSnippet, highlighted }) {
+  useT(); // re-render system lines when the language changes
   if (Number(m.user_id) === 0 && m.msg_type === 'SYSTEM') {
     const tag = String(m.sender_nick || 'SYS');
     return (
       <div className={`sys-line sys-line--${tag.toLowerCase()}`} data-id={m.id}>
         <span className="sys-line__tag">{tag}</span>
-        <span className="sys-line__text">{m.content}</span>
+        <span className="sys-line__text">{systemText(m)}</span>
         <span className="sys-line__time tabular">{timeOf(m)}</span>
       </div>
     );
@@ -50,7 +51,7 @@ const Message = memo(function Message({ m, quoted, myId, myNick, onReply, onOpen
   if (['CHESS_EVENT', 'TROPHY_EVENT', 'BATTLESHIP_EVENT'].includes(m.msg_type)) {
     return (
       <div className={`event-banner event-banner--${m.msg_type === 'TROPHY_EVENT' ? 'trophy' : 'chess'}`} data-id={m.id}>
-        <span>{m.content}</span>
+        <span>{systemText(m)}</span>
         <span className="tabular" style={{ fontSize: 10, opacity: 0.8 }}>
           {timeOf(m)}
         </span>

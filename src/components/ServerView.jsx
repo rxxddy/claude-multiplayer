@@ -147,7 +147,7 @@ export default function ServerView({ session, entry, localSnap, settings, onEntr
               {t('server.sync')}
             </button>
             <button type="button" className="deck-btn deck-btn--ghost" onClick={onSignOut} title={t('server.signOut')} aria-label={t('server.signOut')}>
-              ⎋
+              {t('server.signOutShort')}
             </button>
           </div>
         </div>
@@ -224,6 +224,10 @@ export default function ServerView({ session, entry, localSnap, settings, onEntr
             const r = await act('admin', payload);
             if (r) notify(t('server.done'), 'ok');
             return Boolean(r);
+          }}
+          onSendPoints={async (targetUserId, amount) => {
+            const r = await act('transfer_points', { target_user_id: targetUserId, amount });
+            if (r) notify(t('card.sent'), 'ok');
           }}
         />
       )}

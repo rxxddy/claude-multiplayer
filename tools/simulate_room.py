@@ -152,10 +152,13 @@ class Bot:
         elif roll < .225:
             other = random.choice([b for b in room_state['bots'] if b is not self])
             call('bs_invite', self.token, target_nick=other.nick, stake=random.choice([0, 25, 50]))
-        elif roll < .21:
+        elif roll < .25:
             other = random.choice([b for b in room_state['bots'] if b is not self])
             call('chess_invite', self.token, target_nick=other.nick, stake=random.choice([0, 50, 100]))
             room_state['chess'].append((self, other, time.time()))
+        elif roll < .27:
+            other = random.choice([b for b in room_state['bots'] if b is not self])
+            call('transfer_points', self.token, target_user_id=other.uid, amount=random.choice([10, 25, 50, 100]))
 
 
 def main():

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Multiplayer — one-shot server setup for a fresh Ubuntu 24.04 VM (Oracle Cloud Always Free, ARM or x86).
 #
-# Usage (on the VM, next to api.php):
+# Usage (on the VM, next to api.php and landing.html):
 #   sudo bash oracle-setup.sh [domain] ["Server name"] [join-key]
 #
 #   domain     your domain pointing to this VM; empty = free <ip>.sslip.io hostname (HTTPS works too)
@@ -56,9 +56,18 @@ for port in 80 443; do
 done
 netfilter-persistent save
 
+echo "==> ssh hardening"
+echo 'PermitRootLogin no' > /etc/ssh/sshd_config.d/10-hardening.conf
+sshd -t && systemctl reload ssh
+systemctl disable --now rpcbind.service rpcbind.socket 2>/dev/null || true
+
 echo "==> app files"
 mkdir -p "$APP/public" "$APP/private_cyberdeck"
 install -m 0644 "$HERE/api.php" "$APP/public/api.php"
+if [[ -f "$HERE/landing.html" ]]; then
+  sed "s/{{DOMAIN}}/$DOMAIN/g" "$HERE/landing.html" > "$APP/public/index.html"
+  chmod 0644 "$APP/public/index.html"
+fi
 chown -R root:www-data "$APP/public"
 chown www-data:www-data "$APP/private_cyberdeck"
 chmod 0750 "$APP/private_cyberdeck"
@@ -87,6 +96,30 @@ post_max_size = 2M
 upload_max_filesize = 1M
 max_execution_time = 30
 INI
+
+echo "==> error log (rotated daily, 7 days, max 5 MB each) + journald cap"
+install -d -o www-data -g adm -m 0750 /var/log/multiplayer
+install -o www-data -g adm -m 0640 /dev/null /var/log/multiplayer/php-error.log 2>/dev/null || true
+sed -i '/^php_admin_value\[error_log\]/d; /^php_admin_flag\[log_errors\]/d' "$POOL"
+echo 'php_admin_value[error_log] = /var/log/multiplayer/php-error.log' >> "$POOL"
+echo 'php_admin_flag[log_errors] = on' >> "$POOL"
+cat > /etc/logrotate.d/multiplayer <<'ROT'
+/var/log/multiplayer/*.log {
+    daily
+    rotate 7
+    maxsize 5M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+ROT
+mkdir -p /etc/systemd/journald.conf.d
+printf '[Journal]
+SystemMaxUse=200M
+' > /etc/systemd/journald.conf.d/size.conf
+systemctl restart systemd-journald
 systemctl restart php8.3-fpm
 
 echo "==> caddy (HTTPS is issued automatically)"
@@ -108,16 +141,20 @@ $DOMAIN {
 		php_fastcgi unix//run/php/php8.3-fpm.sock
 	}
 	handle {
-		respond "Claude Multiplayer server — add https://$DOMAIN in the app." 200
+		# every other path shows the landing page; nothing else under public/ is served
+		rewrite * /index.html
+		header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-ancestors 'none'"
+		file_server
 	}
 }
 CADDY
 systemctl reload caddy || systemctl restart caddy
 
 echo "==> nightly backups (03:30, keep 14)"
-mkdir -p /var/backups/multiplayer
+# backups run as www-data: sqlite as root would leave root-owned -wal/-shm files and lock the app out
+install -d -o www-data -g www-data -m 0750 /var/backups/multiplayer
 cat > /etc/cron.d/multiplayer-backup <<CRON
-30 3 * * * root sqlite3 $APP/private_cyberdeck/deck_state_v2.sqlite ".backup /var/backups/multiplayer/deck-\$(date +\%F).sqlite" && cp $APP/private_cyberdeck/deck_secret.key /var/backups/multiplayer/ 2>/dev/null; find /var/backups/multiplayer -name 'deck-*.sqlite' -mtime +14 -delete
+30 3 * * * www-data sqlite3 $APP/private_cyberdeck/deck_state_v2.sqlite ".backup /var/backups/multiplayer/deck-\$(date +\%F).sqlite" && install -m 600 $APP/private_cyberdeck/deck_secret.key /var/backups/multiplayer/ 2>/dev/null; find /var/backups/multiplayer -name 'deck-*.sqlite' -mtime +14 -delete
 CRON
 
 echo

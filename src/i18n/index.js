@@ -47,6 +47,22 @@ export function t(key, vars) {
   return s;
 }
 
+/**
+ * Text of a server system message in the UI language. The server sends `i18n: { k, p }` next to the
+ * English `content`; unknown keys (older servers / messages) fall back to the English text.
+ */
+export function systemText(m) {
+  const key = m?.i18n?.k ? `sys.${m.i18n.k}` : null;
+  if (!key || (!(key in (DICTS[current] || {})) && !(key in en))) return m?.content || '';
+  const p = { ...(m.i18n.p || {}) };
+  if (p.reason !== undefined) {
+    const r = `sys.reason.${p.reason}`;
+    p.reason = t(r) === r ? String(p.reason) : t(r);
+  }
+  if (p.pts !== undefined) p.ptsNote = t(p.each ? 'sys.ptsEach' : 'sys.pts', { n: p.pts });
+  return t(key, p);
+}
+
 /** Re-renders the component when the language changes; returns t. */
 export function useT() {
   useSyncExternalStore(
