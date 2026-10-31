@@ -250,7 +250,14 @@ export function PlayerCardModal({ op, me, myRole, maxStake, onClose, onChessInvi
           <section className="pcf__box">
             <h4>{t('card.sendPoints')}</h4>
             <div className="pc__row">
-              <NumberInput min={1} max={Number(me?.points) || 1} step={10} value={gift} onChange={(v) => setGift(Math.max(1, Number(v) || 1))} style={{ width: 140 }} />
+              <NumberInput
+                min={1}
+                max={Number(me?.points) || 1}
+                step={10}
+                value={gift}
+                onChange={(v) => setGift(Math.max(1, Number(v) || 1))}
+                style={{ width: 140 }}
+              />
               <button
                 type="button"
                 className="deck-btn deck-btn--primary"
@@ -275,7 +282,9 @@ export function PlayerCardModal({ op, me, myRole, maxStake, onClose, onChessInvi
               <button
                 type="button"
                 className="deck-btn"
-                onClick={() => act('grant_points', { amount: grant }, t(grant >= 0 ? 'card.giveSelfConfirm' : 'card.removeSelfConfirm', { n: Math.abs(grant) }))}
+                onClick={() =>
+                  act('grant_points', { amount: grant }, t(grant >= 0 ? 'card.giveSelfConfirm' : 'card.removeSelfConfirm', { n: Math.abs(grant) }))
+                }
               >
                 {t('card.pointsBtn')}
               </button>
