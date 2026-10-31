@@ -425,6 +425,6 @@ export default {
     '🏆 SFIDA SETTIMANALE ({week}, in ritardo — conteggio fino a venerdì 16:30): {nick} conquista la Corona e la Cornice d’oro con {n} commit! (+1 Trofeo, +1000 pt | 2° +500 | 3° +250)',
   'sys.showdownReminder': '⏳ Sfida settimanale venerdì alle 16:30 (tra {hours}h): {nick} è in testa con {n} commit. Spedisci!',
   'sys.showdownReminderEmpty': '⏳ Sfida settimanale venerdì alle 16:30 (tra {hours}h): ancora nessun commit questa settimana. La corona è in palio!',
-  'card.bar5h': '5O',
+  'card.bar5h': '5H',
   'card.barWeek': 'SET',
 };
