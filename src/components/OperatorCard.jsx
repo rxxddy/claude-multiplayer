@@ -99,8 +99,8 @@ export const OperatorCard = memo(function OperatorCard({ op, isMe, onOpen }) {
           <div className="oc-bar--hidden">{t('card.usagePrivate')}</div>
         ) : (
           <>
-            <Bar label="5H" value={u.s} hint={t('card.limit5h')} />
-            {u.w !== null && <Bar label="WK" value={u.w} hint={t('card.limitWeek')} />}
+            <Bar label={t('card.bar5h')} value={u.s} hint={t('card.limit5h')} />
+            {u.w !== null && <Bar label={t('card.barWeek')} value={u.w} hint={t('card.limitWeek')} />}
           </>
         )}
       </div>

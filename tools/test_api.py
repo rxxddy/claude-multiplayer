@@ -131,7 +131,7 @@ ids = [call("send_message", BT, content=f"hello quantum{i} world")["id"] for i i
 call("send_message", CT, content="banana smoothie", msg_type="SNIPPET", snippet_body="print('x')")
 h = call("history", BT, before_id=ids[-1], limit=3)["messages"]
 check([x["id"] for x in h] == ids[1:4] or len(h) == 3 and h[-1]["id"] < ids[-1], "history before_id newest last")
-check(set(h[0].keys()) == {"id", "user_id", "sender_nick", "avatar_color", "msg_type", "content", "snippet_body", "reply_to", "created_ts"}, "message shape")
+check(set(h[0].keys()) == {"id", "user_id", "sender_nick", "avatar_color", "msg_type", "content", "snippet_body", "reply_to", "created_ts", "i18n"}, "message shape")
 r = call("search_messages", BT, q="quantum3")["messages"]
 check(len(r) == 1 and "quantum3" in r[0]["content"], "FTS exact")
 r = call("search_messages", BT, q="quant")["messages"]
@@ -338,8 +338,9 @@ check(ta > 0.4 * tb, f"unknown user verifies a dummy hash ({ta*1000:.0f} ms vs {
 print("== Friday showdown counts server-side commit feed")
 now = datetime.now()
 if now.isoweekday() > 5 or (now.isoweekday() == 5 and (now.hour, now.minute) >= (16, 30)):
+    # this test server was created after this week's Friday 16:30 deadline, so the week must be skipped
     m = call("search_messages", OT, q="SHOWDOWN")["messages"]
-    check(len(m) == 1 and BNICK in m[0]["content"] and "1 commits" in m[0]["content"], "winner = most feed commits (bob), not client commits_week (owner sent 9)")
+    check(len(m) == 0, "no showdown for a week that ended before the server existed")
 else:
     print("  skip - only verifiable after Friday 16:30")
 

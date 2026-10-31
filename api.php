@@ -1489,43 +1489,52 @@ final class DeckKernel
         ];
     }
 
+    /** Reminder slots (Europe/Rome, Monday–Friday) announcing the Friday 16:30 showdown. */
+    private const SHOWDOWN_REMINDERS = ['10:00', '13:00', '16:00', '19:00'];
+
+    /**
+     * Weekly showdown: commits from Monday 00:00 to Friday 16:30 (server clock) win. The server has no scheduler,
+     * so the award happens on the first sync after the deadline; a late award is labelled as such but still only
+     * counts commits made before the deadline. Weeks that ended before the server existed are skipped.
+     */
     private function evaluateFridayShowdown(array $room): void
     {
         $now = new DateTimeImmutable('now', new DateTimeZone('Europe/Rome'));
-        $dayOfWeek = (int)$now->format('N'); // 5 = Friday
-        $hour = (int)$now->format('G');
-        $minute = (int)$now->format('i');
         $weekKey = $now->format('o-\WW');
+        $weekStart = $now->modify('monday this week')->setTime(0, 0);
+        $deadline = $weekStart->modify('+4 days')->setTime(16, 30);
 
-        $isPastTrigger = ($dayOfWeek === 5 && ($hour > 16 || ($hour === 16 && $minute >= 30))) || ($dayOfWeek > 5);
-        if (!$isPastTrigger || $room['last_awarded_week'] === $weekKey) {
+        if ($now < $deadline) {
+            $this->showdownReminder($now, $weekStart, $deadline);
+            return;
+        }
+        if ($room['last_awarded_week'] === $weekKey) {
             return;
         }
 
-        // Weekly commits are counted server-side from commit_feed rows received this ISO week (server clock),
-        // so client-reported counters never influence prizes.
-        $weekStart = $now->modify('monday this week')->setTime(0, 0)->getTimestamp();
-        $stmt = $this->pdo->prepare("
-            SELECT cf.user_id, COUNT(*) AS n, u.display_nick
-            FROM commit_feed cf
-            JOIN room_members rm ON rm.room_id = 'MAIN' AND rm.user_id = cf.user_id AND rm.banned = 0
-            JOIN users u ON u.id = cf.user_id
-            WHERE cf.room_id = 'MAIN' AND cf.created_ts >= ?
-            GROUP BY cf.user_id
-            ORDER BY n DESC, MIN(cf.id) ASC
-            LIMIT 3
-        ");
-        $stmt->execute([$weekStart]);
-        $top = $stmt->fetchAll();
-        if (!$top) {
-            return;
+        $born = (int)$this->pdo->query('SELECT MIN(created_at) FROM users')->fetchColumn();
+        $top = [];
+        if ($born > 0 && $born < $deadline->getTimestamp()) {
+            $stmt = $this->pdo->prepare("
+                SELECT cf.user_id, COUNT(*) AS n, u.display_nick
+                FROM commit_feed cf
+                JOIN room_members rm ON rm.room_id = 'MAIN' AND rm.user_id = cf.user_id AND rm.banned = 0
+                JOIN users u ON u.id = cf.user_id
+                WHERE cf.room_id = 'MAIN' AND cf.created_ts >= ? AND cf.created_ts < ?
+                GROUP BY cf.user_id
+                ORDER BY n DESC, MIN(cf.id) ASC
+                LIMIT 3
+            ");
+            $stmt->execute([$weekStart->getTimestamp(), $deadline->getTimestamp()]);
+            $top = $stmt->fetchAll();
         }
+        $late = $now->getTimestamp() - $deadline->getTimestamp() > 3600;
 
-        $this->tx(function () use ($top, $weekKey): void {
+        $this->tx(function () use ($top, $weekKey, $late): void {
             // Claim the week first so concurrent syncs cannot award twice
             $claim = $this->pdo->prepare("UPDATE rooms SET last_awarded_week = ?, champion_user_id = ? WHERE room_id = 'MAIN' AND last_awarded_week <> ?");
-            $claim->execute([$weekKey, (int)$top[0]['user_id'], $weekKey]);
-            if ($claim->rowCount() !== 1) {
+            $claim->execute([$weekKey, $top ? (int)$top[0]['user_id'] : 0, $weekKey]);
+            if ($claim->rowCount() !== 1 || !$top) {
                 return;
             }
             foreach ($top as $i => $w) {
@@ -1534,11 +1543,61 @@ final class DeckKernel
             $this->pdo->prepare("UPDATE room_members SET trophies = trophies + 1 WHERE room_id = 'MAIN' AND user_id = ?")
                 ->execute([(int)$top[0]['user_id']]);
             $this->insertSystemMessage('ARENA', 'TROPHY_EVENT', sprintf(
-                '🏆 FRIDAY 16:30 SHOWDOWN (%s): %s takes the Crown & Golden Frame with %d commits this week! (+1 Trophy, +1000 pts | 2nd +500 | 3rd +250)',
+                '🏆 %s (%s): %s takes the Crown & Golden Frame with %d commits this week! (+1 Trophy, +1000 pts | 2nd +500 | 3rd +250)',
+                $late ? 'WEEKLY SHOWDOWN (late, counted until Friday 16:30)' : 'FRIDAY 16:30 SHOWDOWN',
                 $weekKey,
                 $top[0]['display_nick'],
                 (int)$top[0]['n']
-            ), ['showdown', ['week' => $weekKey, 'nick' => $top[0]['display_nick'], 'n' => (int)$top[0]['n']]]);
+            ), [$late ? 'showdownLate' : 'showdown', ['week' => $weekKey, 'nick' => $top[0]['display_nick'], 'n' => (int)$top[0]['n']]]);
+        });
+    }
+
+    /** Posts at most one reminder per slot; a slot missed while nobody was online is skipped, not replayed. */
+    private function showdownReminder(DateTimeImmutable $now, DateTimeImmutable $weekStart, DateTimeImmutable $deadline): void
+    {
+        $slot = '';
+        foreach (self::SHOWDOWN_REMINDERS as $hm) {
+            [$h, $m] = array_map('intval', explode(':', $hm));
+            $at = $now->setTime($h, $m);
+            if ($now >= $at && $now->getTimestamp() - $at->getTimestamp() < 3 * 3600 && $at < $deadline) {
+                $slot = $now->format('Y-m-d') . ' ' . $hm;
+            }
+        }
+        if ($slot === '' || (int)$now->format('N') > 5 || $this->meta('showdown_reminder') >= $slot) {
+            return;
+        }
+        $this->tx(function () use ($slot, $weekStart, $deadline, $now): void {
+            // claim the slot inside the write lock so concurrent syncs post it only once
+            $this->pdo->exec("INSERT OR IGNORE INTO server_meta (k, v) VALUES ('showdown_reminder', '')");
+            $claim = $this->pdo->prepare("UPDATE server_meta SET v = ? WHERE k = 'showdown_reminder' AND v < ?");
+            $claim->execute([$slot, $slot]);
+            if ($claim->rowCount() !== 1) {
+                return;
+            }
+            $lead = $this->pdo->prepare("
+                SELECT u.display_nick, COUNT(*) AS n
+                FROM commit_feed cf
+                JOIN room_members rm ON rm.room_id = 'MAIN' AND rm.user_id = cf.user_id AND rm.banned = 0
+                JOIN users u ON u.id = cf.user_id
+                WHERE cf.room_id = 'MAIN' AND cf.created_ts >= ? AND cf.created_ts < ?
+                GROUP BY cf.user_id ORDER BY n DESC, MIN(cf.id) ASC LIMIT 1
+            ");
+            $lead->execute([$weekStart->getTimestamp(), $deadline->getTimestamp()]);
+            $leader = $lead->fetch();
+            $hours = (int)ceil(($deadline->getTimestamp() - $now->getTimestamp()) / 3600);
+            if ($leader) {
+                $this->insertSystemMessage('ARENA', 'TROPHY_EVENT', sprintf(
+                    '⏳ Weekly showdown on Friday 16:30 (in %dh): %s leads with %d commits. Ship it!',
+                    $hours,
+                    $leader['display_nick'],
+                    (int)$leader['n']
+                ), ['showdownReminder', ['hours' => $hours, 'nick' => $leader['display_nick'], 'n' => (int)$leader['n']]]);
+            } else {
+                $this->insertSystemMessage('ARENA', 'TROPHY_EVENT', sprintf(
+                    '⏳ Weekly showdown on Friday 16:30 (in %dh): no commits yet this week. The crown is up for grabs!',
+                    $hours
+                ), ['showdownReminderEmpty', ['hours' => $hours]]);
+            }
         });
     }
 

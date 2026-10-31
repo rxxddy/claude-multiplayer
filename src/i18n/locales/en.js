@@ -420,4 +420,10 @@ export default {
   'sys.bsWin_sank': '🚢 BATTLESHIP // {winner} sank the entire fleet of {loser}! +{prize} pts',
   'sys.bsWin_resign': '🚢 BATTLESHIP // {winner} wins by resignation against {loser}! +{prize} pts',
   'sys.bsWin_forfeit': '🚢 BATTLESHIP // {winner} wins by forfeit (fleet never placed) against {loser}! +{prize} pts',
+  'sys.showdownLate':
+    '🏆 WEEKLY SHOWDOWN ({week}, late — counted until Friday 16:30): {nick} takes the Crown & Golden Frame with {n} commits! (+1 Trophy, +1000 pts | 2nd +500 | 3rd +250)',
+  'sys.showdownReminder': '⏳ Weekly showdown on Friday 16:30 (in {hours}h): {nick} leads with {n} commits. Ship it!',
+  'sys.showdownReminderEmpty': '⏳ Weekly showdown on Friday 16:30 (in {hours}h): no commits yet this week. The crown is up for grabs!',
+  'card.bar5h': '5H',
+  'card.barWeek': 'WK',
 };

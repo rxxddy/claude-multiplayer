@@ -421,4 +421,10 @@ export default {
   'sys.bsWin_sank': '🚢 BATTAGLIA NAVALE // {winner} ha affondato l’intera flotta di {loser}! +{prize} pt',
   'sys.bsWin_resign': '🚢 BATTAGLIA NAVALE // {winner} vince per abbandono contro {loser}! +{prize} pt',
   'sys.bsWin_forfeit': '🚢 BATTAGLIA NAVALE // {winner} vince a tavolino (flotta mai schierata) contro {loser}! +{prize} pt',
+  'sys.showdownLate':
+    '🏆 SFIDA SETTIMANALE ({week}, in ritardo — conteggio fino a venerdì 16:30): {nick} conquista la Corona e la Cornice d’oro con {n} commit! (+1 Trofeo, +1000 pt | 2° +500 | 3° +250)',
+  'sys.showdownReminder': '⏳ Sfida settimanale venerdì alle 16:30 (tra {hours}h): {nick} è in testa con {n} commit. Spedisci!',
+  'sys.showdownReminderEmpty': '⏳ Sfida settimanale venerdì alle 16:30 (tra {hours}h): ancora nessun commit questa settimana. La corona è in palio!',
+  'card.bar5h': '5O',
+  'card.barWeek': 'SET',
 };
