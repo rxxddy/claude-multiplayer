@@ -1,6 +1,6 @@
 {
   "name": "claude-multiplayer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Desktop multiplayer terminal for teams coding with Claude Code: shared chat, live commit feed, usage limits, arcade and chess on self-hosted community servers.",
   "license": "MIT",
   "author": "rxxddy",
