@@ -26,7 +26,7 @@
 │   $ connect  https://204-216-221-21.sslip.io                                 │
 │                                                                              │
 │   The original Claude Multiplayer community, run by the author.              │
-│   Install the app, press + and paste the address above.                       │
+│   Install the app, press + and paste the address above.                      │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
