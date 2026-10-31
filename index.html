@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Claude Multiplayer</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #141413;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: radial-gradient(ellipse at 50% 42%, #22201d 0%, #141413 62%);
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        color: #f0efea;
+        transition:
+          opacity 0.5s ease,
+          transform 0.5s ease;
+      }
+      #splash.is-done {
+        opacity: 0;
+        transform: scale(1.03);
+        pointer-events: none;
+      }
+      .sp-mark {
+        position: relative;
+        width: 112px;
+        height: 112px;
+      }
+      .sp-mark::before {
+        content: '';
+        position: absolute;
+        inset: -30%;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(217, 119, 87, 0.35) 0%, rgba(217, 119, 87, 0) 65%);
+        animation: sp-breathe 2.4s ease-in-out infinite;
+      }
+      .sp-mark svg {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        animation: sp-spin 14s linear infinite;
+      }
+      .sp-mark line {
+        stroke: #d97757;
+        stroke-linecap: round;
+        stroke-dasharray: 32;
+        stroke-dashoffset: 32;
+        animation: sp-draw 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        animation-delay: calc(var(--i) * 55ms);
+      }
+      .sp-title {
+        font-size: 15px;
+        letter-spacing: 0.42em;
+        font-weight: 600;
+        text-indent: 0.42em;
+        opacity: 0;
+        animation: sp-rise 0.7s 0.55s ease-out forwards;
+      }
+      .sp-title b {
+        color: #d97757;
+        font-weight: 600;
+      }
+      .sp-sub {
+        margin-top: -14px;
+        font-size: 10.5px;
+        letter-spacing: 0.3em;
+        color: #78756e;
+        opacity: 0;
+        animation: sp-rise 0.7s 0.7s ease-out forwards;
+      }
+      .sp-bar {
+        width: 220px;
+        height: 2px;
+        border-radius: 2px;
+        background: #2a2825;
+        overflow: hidden;
+        opacity: 0;
+        animation: sp-rise 0.5s 0.85s ease-out forwards;
+      }
+      .sp-bar i {
+        display: block;
+        height: 100%;
+        width: 40%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, transparent, #d97757, #f0a585, #d97757, transparent);
+        animation: sp-scan 1.25s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      }
+      .sp-status {
+        height: 14px;
+        font-size: 10.5px;
+        color: #78756e;
+        opacity: 0;
+        animation: sp-rise 0.5s 1s ease-out forwards;
+      }
+      .sp-status::before {
+        content: '> ';
+        color: #d97757;
+      }
+      .sp-status::after {
+        content: '_';
+        animation: sp-blink 1s steps(1) infinite;
+      }
+      @keyframes sp-draw {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      @keyframes sp-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes sp-breathe {
+        50% {
+          transform: scale(1.12);
+          opacity: 0.7;
+        }
+      }
+      @keyframes sp-rise {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes sp-scan {
+        from {
+          transform: translateX(-110%);
+        }
+        to {
+          transform: translateX(260%);
+        }
+      }
+      @keyframes sp-blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sp-mark svg,
+        .sp-mark::before,
+        .sp-bar i {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splash">
+      <div class="sp-mark">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <line x1="50" y1="50" x2="50.0" y2="21.0" stroke-width="5.2" style="--i: 0" />
+          <line x1="50" y1="50" x2="62.6" y2="32.6" stroke-width="4.4" style="--i: 1" />
+          <line x1="50" y1="50" x2="75.1" y2="35.5" stroke-width="5.2" style="--i: 2" />
+          <line x1="50" y1="50" x2="71.4" y2="52.2" stroke-width="4.4" style="--i: 3" />
+          <line x1="50" y1="50" x2="75.1" y2="64.5" stroke-width="5.2" style="--i: 4" />
+          <line x1="50" y1="50" x2="58.7" y2="69.6" stroke-width="4.4" style="--i: 5" />
+          <line x1="50" y1="50" x2="50.0" y2="79.0" stroke-width="5.2" style="--i: 6" />
+          <line x1="50" y1="50" x2="37.4" y2="67.4" stroke-width="4.4" style="--i: 7" />
+          <line x1="50" y1="50" x2="24.9" y2="64.5" stroke-width="5.2" style="--i: 8" />
+          <line x1="50" y1="50" x2="28.6" y2="47.8" stroke-width="4.4" style="--i: 9" />
+          <line x1="50" y1="50" x2="24.9" y2="35.5" stroke-width="5.2" style="--i: 10" />
+          <line x1="50" y1="50" x2="41.3" y2="30.4" stroke-width="4.4" style="--i: 11" />
+        </svg>
+      </div>
+      <div class="sp-title"><b>CLAUDE</b> MULTIPLAYER</div>
+      <div class="sp-sub">TEAM TERMINAL FOR CLAUDE CODE</div>
+      <div class="sp-bar"><i></i></div>
+      <div class="sp-status" id="sp-status">initializing</div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal permissions: frameless window controls, updater, restart after update",
+  "windows": ["main"],
+  "permissions": [
+    "core:event:default",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-start-dragging",
+    "core:window:allow-is-maximized",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

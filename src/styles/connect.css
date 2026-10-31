@@ -1,0 +1,195 @@
+/* Connect / sign-in / onboarding screens */
+
+.connect {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 30%, #201e1b 0%, var(--bg-canvas) 65%);
+}
+
+.connect__card {
+  width: min(440px, 100%);
+  padding: 26px 28px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--bg-surface-1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  animation: pcfPanel 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.connect__head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.connect__head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.connect__head p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.connect__mark {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  animation: sp-spin 20s linear infinite;
+}
+
+.connect__mark line,
+.titlebar__mark line {
+  stroke: var(--claude-terracotta);
+  stroke-linecap: round;
+}
+
+.connect__steps {
+  display: flex;
+  gap: 14px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.connect__steps .is-on {
+  color: var(--claude-terracotta);
+}
+
+.connect__steps .is-done {
+  color: var(--status-online);
+}
+
+.connect__error {
+  padding: 8px 10px;
+  border: 1px solid rgba(224, 83, 71, 0.45);
+  border-radius: 6px;
+  color: #ff8a80;
+  font-size: 11.5px;
+  background: rgba(224, 83, 71, 0.08);
+}
+
+.connect__form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.connect__form label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.connect__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.connect__tabs {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.connect__tabs button {
+  all: unset;
+  flex: 1;
+  text-align: center;
+  padding: 7px;
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.connect__tabs button.is-on {
+  background: rgba(217, 119, 87, 0.15);
+  color: var(--claude-terracotta);
+}
+
+.connect__tabs button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pw-field {
+  position: relative;
+}
+
+.pw-field .deck-input {
+  width: 100%;
+  padding-right: 36px;
+  box-sizing: border-box;
+}
+
+.pw-field__eye {
+  all: unset;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.pw-field__eye:hover {
+  color: var(--text-primary);
+}
+
+.pw-field__eye svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes sp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-progress::after {
+  content: '';
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: dots 1.2s steps(4) infinite;
+}
+
+@keyframes dots {
+  0% {
+    content: '';
+  }
+
+  25% {
+    content: '.';
+  }
+
+  50% {
+    content: '..';
+  }
+
+  75% {
+    content: '...';
+  }
+}

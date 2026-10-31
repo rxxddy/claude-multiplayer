@@ -1,0 +1,40 @@
+{
+  "name": "claude-multiplayer",
+  "version": "1.0.0",
+  "description": "Desktop multiplayer terminal for teams coding with Claude Code: shared chat, live commit feed, usage limits, arcade and chess on self-hosted community servers.",
+  "license": "MIT",
+  "author": "rxxddy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rxxddy/claude-multiplayer"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 1420 --strictPort",
+    "build": "vite build",
+    "tauri": "tauri",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"*.{js,json,html}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\" \"*.{js,json,html}\""
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2",
+    "chess.js": "^1.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-react": "^4",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "vite": "^5"
+  }
+}

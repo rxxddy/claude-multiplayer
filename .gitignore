@@ -1,0 +1,25 @@
+# dependencies & build output
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# local dev server
+php-local.ini
+private_cyberdeck/
+.ht_cyberdeck_vault/
+*.sqlite
+*.sqlite-*
+
+# secrets
+*.key
+*.key.pub
+.env
+.env.*
+
+# editors / OS
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,332 @@
+/* Design tokens, reset and shared primitives (buttons, inputs, switches, chips) */
+
+:root {
+  /* surfaces */
+  --bg-canvas: #141413;
+  --bg-surface-1: #191817;
+  --bg-surface-2: #21201e;
+  --bg-surface-3: #292724;
+  --bg-elevated: #2f2d2a;
+  --bg-glass: rgba(25, 24, 23, 0.88);
+  /* borders */
+  --border-subtle: #262523;
+  --border-default: #302e2b;
+  --border-strong: #423f3b;
+  --border-focus: #d97757;
+  /* text */
+  --text-primary: #f0efea;
+  --text-secondary: #b0aea5;
+  --text-muted: #78756e;
+  --text-faint: #54524c;
+  /* accents */
+  --claude-terracotta: #d97757;
+  --claude-terracotta-dim: rgba(217, 119, 87, 0.14);
+  --claude-terracotta-border: rgba(217, 119, 87, 0.38);
+  --champion-gold: #d4af37;
+  --champion-gold-dim: rgba(212, 175, 55, 0.11);
+  --champion-gold-border: rgba(212, 175, 55, 0.48);
+  --elo-leader-violet: #a78bfa;
+  --elo-leader-dim: rgba(167, 139, 250, 0.13);
+  --elo-leader-border: rgba(167, 139, 250, 0.42);
+  --status-online: #52b788;
+  --status-working: #d97757;
+  --status-overheat: #e05347;
+  --status-offline: #57554f;
+  /* chess board */
+  --board-light: #2d2b28;
+  --board-dark: #1f1e1c;
+  --board-highlight: rgba(217, 119, 87, 0.28);
+  /* radii, fonts */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.deck-btn:hover {
+  background: var(--bg-surface-3);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.deck-btn--primary {
+  background: var(--claude-terracotta-dim);
+  border-color: var(--claude-terracotta-border);
+  color: #f39c7f;
+}
+
+.deck-btn--primary:hover {
+  background: rgba(217, 119, 87, 0.24);
+  border-color: var(--claude-terracotta);
+  color: #ffffff;
+}
+
+.deck-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+@keyframes claudeOverheatJitter {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  25% {
+    transform: translate(-1px, 0.5px);
+  }
+
+  50% {
+    transform: translate(1px, -0.5px);
+  }
+
+  75% {
+    transform: translate(-0.5px, -1px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-surface-2);
+}
+
+.status-dot--online {
+  background: var(--status-online);
+}
+
+.status-dot--working {
+  background: var(--status-working);
+  box-shadow: 0 0 6px var(--status-working);
+}
+
+.status-dot--overheat {
+  background: var(--status-overheat);
+  box-shadow: 0 0 6px var(--status-overheat);
+}
+
+.status-dot--offline {
+  background: var(--status-offline);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.deck-input {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+}
+
+.deck-input:focus {
+  border-color: var(--claude-terracotta);
+}
+
+.chip {
+  all: unset;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  font-size: 11px;
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chip--on {
+  border-color: var(--claude-terracotta);
+  color: var(--claude-terracotta);
+}
+
+.chip--red {
+  color: #ff6b6b;
+}
+
+.chip--black {
+  color: #cfcfcf;
+}
+
+.chip--green {
+  color: #52b788;
+}
+
+.chip--red.chip--on {
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.chip--green.chip--on {
+  background: rgba(82, 183, 136, 0.12);
+}
+
+.chip--black.chip--on {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tab-count {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+}
+
+.deck-btn--primary .tab-count {
+  background: rgba(217, 119, 87, 0.2);
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  padding: 0 6px;
+}
+
+.switch__track {
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--bg-surface-3);
+  border: 1px solid var(--border-default);
+  position: relative;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.2s;
+}
+
+.switch--on .switch__track {
+  background: rgba(217, 119, 87, 0.25);
+  border-color: var(--claude-terracotta);
+}
+
+.switch--on .switch__track::after {
+  transform: translateX(12px);
+  background: var(--claude-terracotta);
+}
+
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+.text-success {
+  color: #3fb950 !important;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
