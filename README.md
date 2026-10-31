@@ -20,6 +20,13 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> [!TIP]
+> **Join the public server** — install the app, press **＋** and paste:
+>
+> ```text
+> https://204-216-221-21.sslip.io
+> ```
+
 <p align="center">
   <img src="docs/screenshots/chat.png" alt="Leaderboard, live commit feed and chat" width="100%">
 </p>
