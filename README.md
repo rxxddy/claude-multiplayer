@@ -21,7 +21,7 @@
 ```
 
 > [!TIP]
-> **Join the public server** — install the app, press **＋** and paste:
+> **Official Claude Multiplayer server** — the original community server, run by the author. Install the app, press **＋** and paste:
 >
 > ```text
 > https://204-216-221-21.sslip.io
