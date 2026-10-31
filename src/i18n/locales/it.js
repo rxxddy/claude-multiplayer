@@ -33,7 +33,7 @@ export default {
   'connect.stepFolder': '3 · progetti',
   'connect.serverAddress': 'Indirizzo del server',
   'connect.joinKey': 'Chiave di accesso al server',
-  'connect.joinKeyHint': '(serve solo per registrarsi)',
+  'connect.joinKeyHint': '(questo server la richiede per registrarsi)',
   'connect.joinKeyPlaceholder': 'fornita dal proprietario del server',
   'connect.enterAddress': 'Inserisci l’indirizzo del server.',
   'connect.checkAddress': '{error}. Controlla l’indirizzo (https://host/api.php).',

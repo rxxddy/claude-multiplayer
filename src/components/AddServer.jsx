@@ -85,7 +85,6 @@ export default function AddServer({ existing, onDone, onCancel, needsFolder }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [stage, setStage] = useState('');
-  const [askKey, setAskKey] = useState(false); // decided once on step 1, not per keystroke
   const [savedPw, setSavedPw] = useState('');
 
   useEffect(() => {
@@ -112,7 +111,6 @@ export default function AddServer({ existing, onDone, onCancel, needsFolder }) {
       const data = await createApi(endpoint)('server_info', {}, { timeout: 8000 });
       setInfo({ ...data, url: endpoint });
       setUrl(endpoint);
-      setAskKey(Boolean(data?.requires_join_key) && !joinKey);
       setStep(2);
     } catch (err) {
       setError(t('connect.checkAddress', { error: err.message }));
@@ -181,10 +179,6 @@ export default function AddServer({ existing, onDone, onCancel, needsFolder }) {
           <form onSubmit={probe} className="connect__form">
             <label>{t('connect.serverAddress')}</label>
             <input className="deck-input" value={url} autoFocus placeholder="https://deck.example.com/api.php" onChange={(e) => setUrl(e.target.value)} />
-            <label>
-              {t('connect.joinKey')} <span className="arcade-dim">{t('connect.joinKeyHint')}</span>
-            </label>
-            <PasswordInput value={joinKey} onChange={setJoinKey} placeholder={t('connect.joinKeyPlaceholder')} />
             <div className="connect__actions">
               {onCancel && (
                 <button type="button" className="deck-btn" onClick={onCancel}>
@@ -238,10 +232,12 @@ export default function AddServer({ existing, onDone, onCancel, needsFolder }) {
                     <PasswordInput value={setupToken} onChange={setSetupToken} />
                   </>
                 )}
-                {(askKey || (existing && info?.requires_join_key)) && (
+                {info?.requires_join_key && (
                   <>
-                    <label>{t('connect.joinKey')}</label>
-                    <PasswordInput value={joinKey} onChange={setJoinKey} />
+                    <label>
+                      {t('connect.joinKey')} <span className="arcade-dim">{t('connect.joinKeyHint')}</span>
+                    </label>
+                    <PasswordInput value={joinKey} onChange={setJoinKey} placeholder={t('connect.joinKeyPlaceholder')} />
                   </>
                 )}
               </>
