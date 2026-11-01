@@ -27,7 +27,7 @@ function Bar({ label, value, hint, wide }) {
 
 function usageInfo(op) {
   if (op.usage_masked || op.usage_s === null || op.usage_s === undefined) return { hidden: true };
-  if (Number(op.usage_s) >= 0) return { s: op.usage_s, w: op.usage_w, at: hhmm(op.usage_ts), reset: op.usage_reset, real: true };
+  if (Number(op.usage_s) >= 0) return { s: op.usage_s, w: op.usage_w, at: hhmm(op.usage_ts), reset: op.usage_reset, resetW: op.usage_reset_w, real: true };
   return { s: op.quota_pct, w: null, real: false };
 }
 
@@ -191,7 +191,9 @@ export function PlayerCardModal({ op, me, myRole, maxStake, onClose, onChessInvi
             ) : (
               <>
                 <Bar wide label={t('card.limit5hShort')} value={u.s} />
+                {u.reset && <p className="arcade-dim pcf__reset">{t('card.resets5h', { at: u.reset })}</p>}
                 {u.w !== null && <Bar wide label={t('card.limitWeekShort')} value={u.w} />}
+                {u.w !== null && u.resetW && <p className="arcade-dim pcf__reset">{t('card.resetsWeek', { at: u.resetW })}</p>}
                 {op.ctx_pct != null && <Bar wide label={t('card.context')} value={op.ctx_pct} />}
                 <p className="arcade-dim pcf__note">
                   {t('card.usageFrom', { at: u.at })}

@@ -432,4 +432,6 @@ export default {
   'cli.hint': 'Paste the full path to claude.exe. To find it, run "where claude" in a terminal. You can change it later in paths.',
   'cli.later': 'later',
   'cli.saved': 'Claude Code CLI saved. Reading your limits…',
+  'card.resets5h': 'resets {at}',
+  'card.resetsWeek': 'resets {at}',
 };

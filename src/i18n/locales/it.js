@@ -433,4 +433,6 @@ export default {
   'cli.hint': 'Incolla il percorso completo di claude.exe. Per trovarlo, esegui "where claude" in un terminale. Puoi cambiarlo più tardi in percorsi.',
   'cli.later': 'più tardi',
   'cli.saved': 'CLI di Claude Code salvata. Lettura dei limiti…',
+  'card.resets5h': 'si azzera {at}',
+  'card.resetsWeek': 'si azzera {at}',
 };

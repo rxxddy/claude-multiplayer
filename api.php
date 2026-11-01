@@ -224,6 +224,7 @@ final class Storage
         $get = $pdo->prepare('SELECT v FROM server_meta WHERE k = ?');
         $get->execute(['site_config_sig']);
         $stored = (string)$get->fetchColumn();
+        $get->closeCursor();
         if ($stored === $sig) {
             return;
         }
@@ -615,6 +616,7 @@ final class Security
         $stmt = $pdo->prepare('SELECT hits, reset_at FROM rate_limits WHERE ip_hash = ? AND bucket = ?');
         $stmt->execute([$ipHash, $bucket]);
         $row = $stmt->fetch();
+        $stmt->closeCursor();
 
         if (!$row || (int)$row['reset_at'] <= $now) {
             $pdo->prepare('
@@ -1200,6 +1202,7 @@ final class DeckKernel
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE username = ?');
         $stmt->execute([$username]);
         $user = $stmt->fetch();
+        $stmt->closeCursor();
 
         $valid = password_verify(substr($password, 0, 256), $user ? (string)$user['password_hash'] : self::DUMMY_HASH);
         if (!$user || !$valid || strlen($password) > 256) {
@@ -1233,6 +1236,7 @@ final class DeckKernel
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE token_sha256 = ?');
         $stmt->execute([hash('sha256', $rawToken)]);
         $user = $stmt->fetch();
+        $stmt->closeCursor();
         if (!$user) {
             throw new ApiException('Session expired or invalidated.', 401, 'UNAUTHORIZED');
         }
@@ -1243,6 +1247,7 @@ final class DeckKernel
         $m = $this->pdo->prepare("SELECT * FROM room_members WHERE room_id = 'MAIN' AND user_id = ?");
         $m->execute([(int)$user['id']]);
         $member = $m->fetch();
+        $m->closeCursor();
         if ((int)$member['banned'] === 1) {
             throw new ApiException('You are banned from this server.', 403, 'BANNED');
         }
@@ -1584,6 +1589,7 @@ final class DeckKernel
             ");
             $lead->execute([$weekStart->getTimestamp(), $deadline->getTimestamp()]);
             $leader = $lead->fetch();
+            $lead->closeCursor();
             $hours = (int)ceil(($deadline->getTimestamp() - $now->getTimestamp()) / 3600);
             if ($leader) {
                 $this->insertSystemMessage('ARENA', 'TROPHY_EVENT', sprintf(
@@ -1665,6 +1671,8 @@ final class DeckKernel
                 'usage_s'       => $usage && (int)$r['usage_s'] >= 0 ? (int)$r['usage_s'] : null,
                 'usage_w'       => $usage && (int)$r['usage_w'] >= 0 ? (int)$r['usage_w'] : null,
                 'usage_ts'      => $usage ? (int)$r['usage_ts'] : null,
+                'usage_reset'   => $usage && (string)$r['usage_reset'] !== '' ? (string)$r['usage_reset'] : null,
+                'usage_reset_w' => $usage && (string)$r['usage_reset_w'] !== '' ? (string)$r['usage_reset_w'] : null,
                 'usage_masked'  => $masked,
                 'ctx_pct'       => (int)$r['ctx_pct'] >= 0 ? (int)$r['ctx_pct'] : null,
                 'commits_day'   => $commits ? (int)$r['commits_day'] : null,
@@ -1961,6 +1969,7 @@ final class DeckKernel
             ');
             $stmt->execute([$userId, $gameId, $challengerNick]);
             $game = $stmt->fetch();
+            $stmt->closeCursor();
             if (!$game) {
                 throw new ApiException('No pending chess challenge found from that operator.');
             }
@@ -2016,6 +2025,7 @@ final class DeckKernel
             ');
             $stmt->execute([$gameId, $userId, $userId]);
             $game = $stmt->fetch();
+            $stmt->closeCursor();
             if (!$game) {
                 throw new ApiException('Active chess session not found.', 404, 'NOT_FOUND');
             }
@@ -2165,6 +2175,7 @@ final class DeckKernel
             ');
             $stmt->execute([$userId, $gameId, $nick, $userId, $gameId, $nick]);
             $game = $stmt->fetch();
+            $stmt->closeCursor();
             if (!$game || !$this->cancelChessInvite($game)) {
                 throw new ApiException('No pending chess challenge with that operator.');
             }
@@ -2272,6 +2283,7 @@ final class DeckKernel
         $t = $this->pdo->prepare("SELECT rm.role, u.display_nick FROM room_members rm JOIN users u ON u.id = rm.user_id WHERE rm.room_id = 'MAIN' AND rm.user_id = ?");
         $t->execute([$targetId]);
         $target = $t->fetch();
+        $t->closeCursor();
         $selfGrant = $op === 'grant_points' && $isOwner;
         if (!$target || ($targetId === $userId && !$selfGrant)) {
             throw new ApiException('Invalid target.');
@@ -2367,6 +2379,7 @@ final class DeckKernel
             WHERE rm.room_id = 'MAIN' AND rm.user_id = ? AND rm.banned = 0");
         $t->execute([$targetId]);
         $nick = $t->fetchColumn();
+        $t->closeCursor();
         if ($nick === false) {
             throw new ApiException('Invalid target.');
         }
@@ -2452,6 +2465,7 @@ final class DeckKernel
             $stmt = $this->pdo->prepare("SELECT COUNT(*) AS n, MIN(ts) AS oldest FROM game_log WHERE user_id = ? AND kind = 'spin' AND ts > ?");
             $stmt->execute([$userId, $now - $win]);
             $r = $stmt->fetch();
+            $stmt->closeCursor();
             $res[$k] = ['used' => (int)$r['n'], 'cap' => (int)$cap, 'frees_at' => (int)$r['oldest'] + $win];
             $res['out']["spins_{$k}_left"] = max(0, (int)$cap - (int)$r['n']);
         }
@@ -2550,6 +2564,7 @@ final class DeckKernel
         $stmt = $this->pdo->prepare("SELECT * FROM duels WHERE id = ? AND room_id = 'MAIN'");
         $stmt->execute([$id]);
         $duel = $stmt->fetch();
+        $stmt->closeCursor();
         if (!$duel) {
             throw new ApiException('Duel not found.', 404, 'NOT_FOUND');
         }
@@ -2657,6 +2672,7 @@ final class DeckKernel
         $stmt = $this->pdo->prepare('SELECT * FROM bs_games WHERE id = ? AND (a_id = ? OR b_id = ?)');
         $stmt->execute([$gameId, $userId, $userId]);
         $g = $stmt->fetch();
+        $stmt->closeCursor();
         if (!$g) {
             throw new ApiException('Battleship game not found.', 404, 'NOT_FOUND');
         }
