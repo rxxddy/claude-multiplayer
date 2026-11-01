@@ -664,4 +664,7 @@
   text-shadow: 0 0 6px rgba(63, 185, 80, 0.35);
 }
 
-.pcf__reset { margin: -2px 0 8px; font-size: 11px; }
+.pcf__reset {
+  margin: -2px 0 8px;
+  font-size: 11px;
+}
